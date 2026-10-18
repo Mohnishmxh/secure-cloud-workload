@@ -1,0 +1,9 @@
+.git
+.gitignore
+.env
+*.md
+reports/
+Dockerfile.baseline
+__pycache__/
+*.pyc
+secrets/

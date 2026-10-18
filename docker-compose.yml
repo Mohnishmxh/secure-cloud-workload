@@ -1,0 +1,71 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: secure-workload:hardened
+    container_name: workload-api
+    # Bind ONLY to localhost (127.0.0.1), never 0.0.0.0
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      - APP_ENV=production
+      - DB_HOST=db
+      - DB_NAME=workload_db
+      - DB_USER=workload_user
+      - DB_PASSWORD_FILE=/run/secrets/db_password
+    secrets:
+      - db_password
+    # Runtime hardening controls
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - frontend_net
+      - backend_net
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    container_name: workload-db
+    # Notice: NO 'ports:' exposed to the host!
+    environment:
+      - POSTGRES_DB=workload_db
+      - POSTGRES_USER=workload_user
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
+    secrets:
+      - db_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workload_user -d workload_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+
+volumes:
+  pgdata:
+
+networks:
+  frontend_net:
+    driver: bridge
+  backend_net:
+    driver: bridge
+    # Block outbound internet access from the backend database network
+    internal: true

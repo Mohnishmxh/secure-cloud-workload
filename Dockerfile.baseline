@@ -1,0 +1,16 @@
+# Baseline Dockerfile (Deliberately Unhardened)
+FROM python:3.11
+
+WORKDIR /app
+
+# Copy all source files in a single layer
+COPY app/ /app/
+
+# Install dependencies globally as root without pinning or cache clearing
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Expose port (metadata only, does not publish to host)
+EXPOSE 8000
+
+# Run Uvicorn directly
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
